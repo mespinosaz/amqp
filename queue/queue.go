@@ -15,7 +15,7 @@ func NewQueue(ch *amqp.Channel, q *amqp.Queue) Queue {
 }
 
 type Queue interface {
-	Publish(message interface{}) error
+	Publish(message interface{}, headers amqp.Table) error
 	Consume(tag string, f func(amqp.Delivery) error)
 }
 
@@ -24,8 +24,15 @@ type queue struct {
 	q  *amqp.Queue
 }
 
-func (iq *queue) Publish(m interface{}) error {
-	b, err := json.Marshal(m)
+func (iq *queue) Publish(m interface{}, h amqp.Table) error {
+	var b []byte
+	var err error
+	s, ok := m.(string)
+	if !ok {
+		b, err = json.Marshal(m)
+	} else {
+		b = []byte(s)
+	}
 
 	if err != nil {
 		log.Printf("ERROR: %v\n", err)
@@ -39,6 +46,7 @@ func (iq *queue) Publish(m interface{}) error {
 		false,
 		amqp.Publishing{
 			ContentType: "text/plain",
+			Headers:     h,
 			Body:        b,
 		})
 
